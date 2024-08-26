@@ -1,38 +1,45 @@
-FROM debian:bullseye-slim
+FROM python:3.8-slim
 
-# install dependencies
-RUN apt-get update && apt-get install -y \
-    wget \
-    git \
-    bash \
-    ca-certificates \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# install miniconda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
-    bash /tmp/miniconda.sh -b -p /app/miniconda3 && \
-    rm /tmp/miniconda.sh
-
-#env variables for conda
-ENV PATH=/app/miniconda3/bin:$PATH
-
-# working dir
 WORKDIR /app
 
-# clone the repo
+# install dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bash wget git && \
+    rm -rf /var/lib/apt/lists/* && \
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /miniconda && \
+    rm /tmp/miniconda.sh && \
+    /miniconda/bin/conda clean -t -i -p -y && \
+    ln -s /miniconda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
+
+# clone the repository
 RUN git clone --depth 1 https://github.com/neherlab/pan-genome-analysis.git
 
-# conda env
-RUN conda env create -f /app/pan-genome-analysis/panX-environment.yml && \
+# create and activate the conda environment
+RUN /bin/bash -c "source /miniconda/etc/profile.d/conda.sh && \
+    conda env create -f /app/pan-genome-analysis/panX-environment.yml && \
     conda clean -a -y && \
-    rm -rf /app/miniconda3/pkgs/*
+    rm -rf /app/miniconda3/pkgs/*"
+
+# ensure the conda environment is activated in new shell sessions
+RUN echo "source /miniconda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate panX" >> ~/.bashrc
 
 # make panX.py globally accessible
 RUN ln -s /app/pan-genome-analysis/panX.py /usr/local/bin/panX.py && \
     chmod +x /usr/local/bin/panX.py
 
-# set entry point
-ENTRYPOINT ["bash", "-c", "source activate panX && exec bash"]
+# use the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# start bash
+# set PATH to include conda binaries
+ENV PATH="/miniconda/bin:/miniconda/condabin:/miniconda/envs/panX/bin:$PATH"
+
+# set the entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
 CMD ["bash"]
+

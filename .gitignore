@@ -1,0 +1,7 @@
+/singularity
+nf_demo/input
+nf_demo/sif_images
+nf_demo/work
+nf_demo/.nextflow
+nf_demo/.nextflow.log
+nf_demo/.nextflow.log.*

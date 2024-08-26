@@ -15,3 +15,5 @@ This Dockerfile creates a Docker image for running panX.py, a microbial pan-geno
 
 look at *build_push.sh*
 
+
+### [Dockerfile](https://github.com/plaquette/panX_container)
